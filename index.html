@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GESTOR DE TRABAJO</title>
+    <link rel="manifest" href="manifest.json?v=1.0.8">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --mesh-color-1: #6366f1;
+            --mesh-color-2: #3b82f6;
+            --mesh-color-3: #a855f7;
+            --mesh-color-4: #ec4899;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            background-image:
+                radial-gradient(at 0% 0%, var(--mesh-color-1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, var(--mesh-color-2) 0, transparent 50%),
+                radial-gradient(at 100% 0%, var(--mesh-color-3) 0, transparent 50%),
+                radial-gradient(at 0% 100%, var(--mesh-color-4) 0, transparent 50%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+
+        input,
+        textarea,
+        select {
+            text-transform: uppercase;
+        }
+
+        ::placeholder {
+            text-transform: none;
+        }
+
+        .task-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .task-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Toasts customization */
+        .toast {
+            position: fixed;
+            top: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body class="p-3 sm:p-6">
+
+    <!-- Custom Toasts container -->
+    <div id="toast"
+        class="toast bg-white border-2 border-indigo-100 px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-4 font-black tracking-tighter text-gray-900 min-w-[300px]">
+        <span id="toast-icon" class="text-2xl"></span>
+        <span id="toast-message" class="uppercase"></span>
+    </div>
+    
+    <!-- Custom Modal container -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[2000] hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl scale-90 opacity-0 transition-all duration-300" id="modal-content">
+            <div class="flex flex-col items-center text-center gap-6">
+                <div id="modal-icon" class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center text-3xl"></div>
+                <div class="space-y-2">
+                    <h3 class="text-xl font-black tracking-tighter text-gray-900 uppercase">GESTOR DE TRABAJO</h3>
+                    <p id="modal-text" class="text-sm font-bold text-gray-400 uppercase leading-relaxed px-4"></p>
+                </div>
+                <div class="flex flex-col w-full gap-3 pt-2">
+                    <button id="modal-confirm-btn" class="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm transition-all active:scale-95 shadow-xl shadow-indigo-200 uppercase">Aceptar</button>
+                    <button id="modal-cancel-btn" class="w-full h-12 bg-gray-50 hover:bg-gray-100 text-gray-400 rounded-2xl font-black text-sm transition-all active:scale-95 uppercase">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
+        <!-- Header -->
+        <header class="flex flex-col lg:flex-row items-center justify-between gap-4 mb-6 sm:mb-10">
+            <div class="space-y-4">
+                <div class="flex flex-col sm:flex-row items-center gap-6">
+                    <h1 class="text-xl sm:text-2xl font-black tracking-tighter text-gray-900 leading-tight">
+                        GESTOR DE <span class="text-indigo-600">TRABAJO</span>
+                    </h1>
+                </div>
+            </div>
+            <button onclick="speakAllPendingTasks()"
+                class="bg-white/40 backdrop-blur-md border border-white/50 px-5 py-3 rounded-2xl font-black text-indigo-700 hover:bg-white/60 transition-all text-sm shadow-xl uppercase tracking-tighter flex items-center gap-2 active:scale-95 group">
+                <i data-lucide="volume-2" class="h-5 w-5 group-hover:animate-bounce"></i>
+                Resumen audible
+            </button>
+        </header>
+
+        <!-- Stats removed for quick view -->
+
+        <main class="grid lg:grid-cols-5 gap-4 sm:gap-6">
+            <!-- Form Section (2/5) -->
+            <div id="formContainer"
+                class="lg:col-span-2 hidden lg:block space-y-8 animate-in fade-in slide-in-from-left-6 duration-700">
+                <h2
+                    class="text-lg sm:text-xl font-black text-gray-900 tracking-tight flex items-center gap-3 uppercase">
+                    <span class="bg-indigo-600 w-4 h-4 rounded-md flex-shrink-0"></span>
+                    NUEVA TAREA
+                </h2>
+
+                <form id="taskForm"
+                    class="bg-white border-2 border-gray-100 p-4 sm:p-6 rounded-2xl shadow-sm space-y-4">
+                    <input type="hidden" id="editingTaskId" value="">
+                    <div class="space-y-3">
+                        <label
+                            class="block text-[10px] sm:text-xs font-black text-gray-400 tracking-[0.2em] uppercase">TÍTULO
+                            DE LA TAREA</label>
+                        <input type="text" id="taskTitle" required placeholder="EJ: REVISIÓN DE DISEÑO"
+                            class="w-full h-12 bg-gray-50 border-2 border-gray-100 focus:border-indigo-200 focus:bg-white focus:ring-8 focus:ring-indigo-500/5 transition-all rounded-xl px-4 text-base font-black outline-none">
+                    </div>
+
+                    <div class="space-y-3">
+                        <label
+                            class="block text-[10px] sm:text-xs font-black text-gray-400 tracking-[0.2em] uppercase">NOTAS</label>
+                        <textarea id="taskDescription" placeholder="DETALLES IMPORTANTES..."
+                            class="w-full h-24 bg-gray-50 border-2 border-gray-100 focus:border-indigo-200 focus:bg-white focus:ring-8 focus:ring-indigo-500/5 transition-all rounded-xl p-4 text-sm font-bold outline-none resize-none"></textarea>
+                    </div>
+
+                    <!-- Priority & Category removed for speed -->
+
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="space-y-3">
+                            <label
+                                class="block text-[10px] sm:text-xs font-black text-gray-400 tracking-[0.2em] uppercase">FECHA</label>
+                            <input type="date" id="taskDate"
+                                class="w-full h-12 bg-gray-50 border-2 border-gray-100 rounded-xl px-3 font-black text-xs outline-none uppercase">
+                        </div>
+                        <div class="space-y-3">
+                            <label
+                                class="block text-[10px] sm:text-xs font-black text-gray-400 tracking-[0.2em] uppercase">HORA</label>
+                            <input type="time" id="taskTime" step="60" list="time-options"
+                                class="w-full h-12 bg-gray-50 border-2 border-gray-100 rounded-xl px-3 font-black text-xs outline-none">
+                            <datalist id="time-options"></datalist>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-base shadow-2xl shadow-indigo-600/30 transition-all active:scale-95 flex items-center justify-center gap-3">
+                        <i data-lucide="plus-circle" class="h-5 w-5 stroke-[3]"></i>
+                        GUARDAR TAREA
+                    </button>
+
+                    <button type="button" onclick="startVoiceInput()"
+                        class="w-full h-12 bg-white border-2 border-indigo-100 text-indigo-600 rounded-xl font-black text-sm hover:bg-indigo-50 transition-all flex items-center justify-center gap-3 active:scale-95">
+                        <i data-lucide="mic" id="micIcon" class="h-5 w-5"></i>
+                        <span id="micText">DICTAR POR VOZ</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- List Section (3/5) -->
+            <div class="lg:col-span-3 space-y-8 animate-in fade-in duration-700 delay-300">
+                <div class="flex items-center justify-between">
+                    <h2
+                        class="text-lg sm:text-xl font-black text-gray-900 tracking-tight flex items-center gap-3 uppercase">
+                        <span class="bg-indigo-600 w-4 h-4 rounded-md flex-shrink-0"></span>
+                        MIS PENDIENTES
+                    </h2>
+                    <!-- Filter removed -->
+                </div>
+
+                <div id="taskList" class="space-y-4">
+                    <!-- Tasks will be injected here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Floating Action Button for Mobile -->
+        <button id="fab" onclick="toggleForm()"
+            class="fixed bottom-6 right-6 lg:hidden w-14 h-14 bg-indigo-600 rounded-full shadow-2xl flex items-center justify-center text-white z-50 active:scale-90 transition-all shadow-indigo-500/40">
+            <i data-lucide="plus" id="fabIcon" class="h-7 w-7 stroke-[3.5]"></i>
+        </button>
+
+        <footer class="text-center py-6">
+            <p onclick="hardResetApp()" class="cursor-pointer text-[8px] sm:text-[10px] font-black text-gray-400 tracking-[0.3em] uppercase opacity-60 hover:opacity-100 transition-opacity">
+                © 2026 GESTOR DE TRABAJO | POR EDWIN DIAZ | WEB APP STANDALONE (TOCA PARA ACTUALIZAR)
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // --- State ---
+        let tasks = JSON.parse(localStorage.getItem('workTasks')) || [];
+        const checkedKeys = new Set();
+
+        // --- Core Functions ---
+        function vibrate() {
+            if ("vibrate" in navigator) {
+                navigator.vibrate(20);
+            }
+        }
+
+        // --- NLP: Natural Language Time Parsing ---
+        function parseNaturalDate(text) {
+            const val = text.toLowerCase();
+            const today = new Date();
+
+            if (val.includes('hoy')) return today.toISOString().split('T')[0];
+
+            if (val.includes('maña')) {
+                const tom = new Date(today);
+                tom.setDate(today.getDate() + 1);
+                return tom.toISOString().split('T')[0];
+            }
+
+            const days = ['domingo', 'lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado'];
+            for (let i = 0; i < days.length; i++) {
+                if (val.includes(days[i])) {
+                    const targetDay = i % 7;
+                    const resultDate = new Date(today);
+                    let diff = targetDay - today.getDay();
+                    if (diff <= 0) diff += 7;
+                    resultDate.setDate(today.getDate() + diff);
+                    return resultDate.toISOString().split('T')[0];
+                }
+            }
+
+            const inDaysMatch = val.match(/en (\d+) d[ií]as/);
+            if (inDaysMatch) {
+                const resultDate = new Date(today);
+                resultDate.setDate(today.getDate() + parseInt(inDaysMatch[1]));
+                return resultDate.toISOString().split('T')[0];
+            }
+
+            return today.toISOString().split('T')[0]; // Default
+        }
+
+        function parseNaturalTime(text) {
+            const val = text.toLowerCase();
+
+            // "en X horas"
+            const inHoursMatch = val.match(/en (\d+) hora/);
+            if (inHoursMatch) {
+                const now = new Date();
+                const future = new Date(now.getTime() + parseInt(inHoursMatch[1]) * 60 * 60 * 1000);
+                return `${future.getHours().toString().padStart(2, '0')}:${future.getMinutes().toString().padStart(2, '0')}`;
+            }
+
+            // "a las X [de la mañana/tarde]"
+            const timeMatch = val.match(/(\d{1,2})[:\s]?(\d{1,2})?/);
+            if (timeMatch) {
+                let hours = parseInt(timeMatch[1]);
+                let minutes = parseInt(timeMatch[2] || '00');
+
+                if (val.includes('tarde') || val.includes('noche') || val.includes('p.m.') || val.includes('pm')) {
+                    if (hours < 12) hours += 12;
+                }
+                if ((val.includes('mañana') || val.includes('a.m.') || val.includes('am')) && hours === 12) {
+                    hours = 0;
+                }
+
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            }
+
+            return "20:00"; // Default
+        }
+
+        function cleanOldTasks() {
+            const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+            const now = Date.now();
+            const originalLength = tasks.length;
+
+            tasks = tasks.filter(task => {
+                if (!task.completed) return true;
+                const completedDate = new Date(task.completedAt || task.createdAt).getTime();
+                return (now - completedDate) < THREE_DAYS_MS;
+            });
+
+            if (tasks.length !== originalLength) {
+                saveTasks();
+            }
+        }
+
+        function saveTasks() {
+            localStorage.setItem('workTasks', JSON.stringify(tasks));
+            renderTasks();
+        }
+
+        function addTask(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const editingId = document.getElementById('editingTaskId').value;
+            const title = document.getElementById('taskTitle').value.toUpperCase();
+            const description = document.getElementById('taskDescription').value.toUpperCase();
+            let dueDate = document.getElementById('taskDate').value;
+            let dueTime = document.getElementById('taskTime').value;
+
+            // Default values if empty
+            if (!dueDate) dueDate = new Date().toISOString().split('T')[0];
+            if (!dueTime) dueTime = "20:00";
+
+            if (editingId) {
+                // Update existing task
+                tasks = tasks.map(t => t.id === editingId ? { ...t, title, description, dueDate, dueTime } : t);
+                document.getElementById('editingTaskId').value = "";
+                showToast('📝', 'TAREA ACTUALIZADA');
+            } else {
+                // Create new task
+                const newTask = {
+                    id: Date.now().toString(),
+                    title,
+                    description,
+                    dueDate,
+                    dueTime,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+                tasks.unshift(newTask);
+                showToast('✅', 'TAREA GUARDADA');
+            }
+
+            document.getElementById('taskForm').reset();
+            saveTasks();
+            vibrate();
+
+            // Speak confirmation
+            speakText(`TAREA ${editingId ? 'ACTUALIZADA' : 'LISTA'}: ${title}.`);
+
+            // If mobile, close form
+            if (window.innerWidth < 1024) {
+                if (!document.getElementById('formContainer').classList.contains('hidden')) {
+                    toggleForm();
+                }
+            }
+        }
+
+        function editTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            // Fill form
+            document.getElementById('editingTaskId').value = task.id;
+            document.getElementById('taskTitle').value = task.title;
+            document.getElementById('taskDescription').value = task.description;
+            document.getElementById('taskDate').value = task.dueDate;
+            document.getElementById('taskTime').value = task.dueTime;
+
+            // Show form if hidden (mobile)
+            const container = document.getElementById('formContainer');
+            if (container.classList.contains('hidden')) toggleForm();
+
+            // Scroll to form
+            const scrollTarget = container.offsetTop - 20;
+            window.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+
+            showToast('✏️', 'EDITANDO TAREA');
+            vibrate();
+        }
+
+        function toggleTask(id) {
+            tasks = tasks.map(t => {
+                if (t.id === id) {
+                    const newStatus = !t.completed;
+                    if (newStatus) {
+                        vibrate();
+                        showToast('🎉', 'TAREA COMPLETADA');
+                        speakText(`¡MUY BIEN! HAS COMPLETADO LA TAREA: ${t.title}`);
+                        return { ...t, completed: newStatus, completedAt: new Date().toISOString() };
+                    }
+                }
+                return t;
+            });
+            saveTasks();
+        }
+
+        function deleteTask(id) {
+            const task = tasks.find(t => t.id === id);
+            tasks = tasks.filter(t => t.id !== id);
+            saveTasks();
+            showToast('🗑️', 'TAREA ELIMINADA');
+            if (task) speakText(`TAREA ELIMINADA: ${task.title}`);
+        }
+
+        // --- Render functions ---
+        function updateStats() {
+            // Stats removed for simplicity
+        }
+
+        function renderTasks() {
+            const list = document.getElementById('taskList');
+
+            // Sort tasks by date and time
+            const filteredTasks = [...tasks].sort((a, b) => {
+                // If no date, put at the end
+                if (!a.dueDate && b.dueDate) return 1;
+                if (a.dueDate && !b.dueDate) return -1;
+                if (!a.dueDate && !b.dueDate) return 0;
+
+                const dateA = new Date(`${a.dueDate}T${a.dueTime || '00:00'}`);
+                const dateB = new Date(`${b.dueDate}T${b.dueTime || '00:00'}`);
+                return dateA - dateB;
+            });
+
+            if (filteredTasks.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center py-20 opacity-30 select-none">
+                        <i data-lucide="clipboard-list" class="h-16 w-16 mx-auto mb-4"></i>
+                        <p class="font-black tracking-[0.3em]">SIN TAREAS</p>
+                    </div>
+                `;
+            } else {
+                list.innerHTML = filteredTasks.map(task => {
+                    const isOverdue = !task.completed && task.dueDate && new Date(`${task.dueDate}T${task.dueTime || '23:59'}`) < new Date();
+
+                    return `
+                        <div class="task-card bg-white p-3 sm:p-4 rounded-2xl border border-gray-100 shadow-sm group relative overflow-hidden ${isOverdue ? 'border-red-100 bg-red-50/5' : ''}">
+                            <div class="flex items-start gap-3 sm:gap-4">
+                                <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask('${task.id}')" 
+                                    class="mt-1 w-5 h-5 rounded-lg border-2 accent-indigo-600 cursor-pointer transition-all active:scale-90">
+                                
+                                <div class="flex-1 space-y-1 min-w-0">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <h4 class="font-black text-base sm:text-lg tracking-tighter leading-tight uppercase ${task.completed ? 'line-through text-gray-300' : 'text-gray-900'}">
+                                            ${task.title}
+                                        </h4>
+                                        <div class="flex gap-1.5 shrink-0">
+                                            <button onclick="editTask('${task.id}')" title="Editar" class="h-9 w-9 rounded-xl border border-gray-100 hover:bg-yellow-50 hover:text-yellow-600 transition-all active:scale-95 flex items-center justify-center">
+                                                <i data-lucide="edit-3" class="h-4 w-4"></i>
+                                            </button>
+                                            <button onclick="speakTaskDetails('${task.id}')" title="Escuchar" class="h-9 w-9 rounded-xl border border-gray-100 hover:bg-indigo-50 hover:text-indigo-600 transition-all active:scale-95 flex items-center justify-center">
+                                                <i data-lucide="volume-2" class="h-4 w-4"></i>
+                                            </button>
+                                            <button onclick="deleteTask('${task.id}')" title="Eliminar" class="h-9 w-9 rounded-xl border border-gray-100 hover:bg-red-50 hover:text-red-600 transition-all active:scale-95 flex items-center justify-center">
+                                                <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    ${task.description ? `<p class="text-xs sm:text-sm font-bold text-gray-500 uppercase ${task.completed ? 'line-through' : ''}">${task.description}</p>` : ''}
+
+                                    <div class="flex flex-wrap gap-2 items-center pt-0.5">
+                                        ${task.dueDate ? `
+                                            <div class="flex items-center gap-1.5 text-[8px] font-black tracking-widest ${isOverdue ? 'text-red-600' : 'text-gray-400'}">
+                                                <i data-lucide="calendar" class="h-3 w-3"></i>
+                                                <span class="uppercase">${formatDate(task.dueDate)}</span>
+                                                ${task.dueTime ? `<i data-lucide="clock" class="h-3 w-3 ml-0.5"></i><span>${task.dueTime}</span>` : ''}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            lucide.createIcons();
+        }
+
+        // --- Voice Logic ---
+        // --- Voice Logic (Interactive Assistant) ---
+        let selectedVoice = null;
+
+        function getBestSpanishVoice() {
+            if (!('speechSynthesis' in window)) return null;
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length === 0) return null;
+
+            // Prioridades: 1. Google es-ES, 2. Monica (premium), 3. Sabina, 4. Cualquier es-ES, 5. Cualquier es-
+            const preferredVoices = [
+                v => v.name.includes('Google') && v.lang.startsWith('es-ES'),
+                v => v.name.includes('Monica') && v.lang.startsWith('es'),
+                v => v.name.includes('Sabina') && v.lang.startsWith('es'),
+                v => v.name.includes('Neural') && v.lang.startsWith('es'),
+                v => v.lang === 'es-ES',
+                v => v.lang.startsWith('es')
+            ];
+
+            for (const preference of preferredVoices) {
+                const found = voices.find(preference);
+                if (found) return found;
+            }
+            return voices.find(v => v.lang.startsWith('es')) || voices[0];
+        }
+
+        // Initialize voice selection
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                selectedVoice = getBestSpanishVoice();
+            };
+            // Initial call if voices are already loaded
+            selectedVoice = getBestSpanishVoice();
+        }
+
+        function speakTextPromise(text, rate = 0.95) {
+            return new Promise((resolve) => {
+                if (!('speechSynthesis' in window)) return resolve();
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                if (!selectedVoice) selectedVoice = getBestSpanishVoice();
+                if (selectedVoice) utterance.voice = selectedVoice;
+                utterance.lang = 'es-ES';
+                utterance.rate = rate;
+                utterance.pitch = 1.0;
+                utterance.onend = () => resolve();
+                utterance.onerror = () => resolve();
+                window.speechSynthesis.speak(utterance);
+            });
+        }
+
+        // Simple speak for one-way notifications
+        function speakText(text, rate = 0.95) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                if (!selectedVoice) selectedVoice = getBestSpanishVoice();
+                if (selectedVoice) utterance.voice = selectedVoice;
+                utterance.lang = 'es-ES';
+                utterance.rate = rate;
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function speakTaskDetails(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+            let text = `TAREA: ${task.title}. `;
+            if (task.description) text += `DETALLES: ${task.description}. `;
+            if (task.dueDate) text += `VENCE EL ${formatDate(task.dueDate)}. `;
+            speakText(text);
+            showToast('🔊', 'REPRODUCIENDO');
+        }
+
+        function speakAllPendingTasks() {
+            const pending = tasks.filter(t => !t.completed).sort((a, b) => {
+                const dateA = new Date(`${a.dueDate || '9999-12-31'}T${a.dueTime || '00:00'}`);
+                const dateB = new Date(`${b.dueDate || '9999-12-31'}T${b.dueTime || '00:00'}`);
+                return dateA - dateB;
+            });
+
+            if (pending.length === 0) {
+                showToast('✨', 'SIN PENDIENTES');
+                speakText('NO TIENES TAREAS PENDIENTES. ¡EXCELENTE TRABAJO!');
+                return;
+            }
+            let msg = `TIENES ${pending.length} TAREAS PENDIENTES. `;
+            pending.slice(0, 10).forEach((t, i) => msg += `${i + 1}. ${t.title} PARA EL ${formatDate(t.dueDate)} A LAS ${t.dueTime}. `);
+            speakText(msg);
+            showToast('🔊', 'RESUMEN CRONOLÓGICO');
+        }
+        function automaticReminders() {
+            const now = new Date();
+            tasks.forEach(task => {
+                if (task.completed || !task.dueDate) return;
+                const dueDateTime = new Date(`${task.dueDate}T${task.dueTime || '23:59'}`);
+                const diffMin = Math.floor((dueDateTime - now) / 60000);
+
+                const reminderTimes = [60, 30, 15, 5, 0];
+                reminderTimes.forEach(time => {
+                    const key = `${task.id}-${time}`;
+                    if (diffMin === time && !checkedKeys.has(key)) {
+                        checkedKeys.add(key);
+                        let msg = "";
+                        if (time === 0) msg = `¡ATENCIÓN! LA TAREA ${task.title} HA VENCIDO.`;
+                        else if (time === 60) msg = `RECORDATORIO: LA TAREA ${task.title} VENCE EN UNA HORA.`;
+                        else msg = `RECORDATORIO: LA TAREA ${task.title} VENCE EN ${time} MINUTOS.`;
+
+                        showToast('⏰', msg);
+                        speakText(msg);
+                        showSystemNotification("RECORDATORIO DE TRABAJO", msg);
+                    }
+                });
+            });
+        }
+
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+        }
+
+        function showSystemNotification(title, body) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                navigator.serviceWorker.ready.then((registration) => {
+                    registration.showNotification(title, {
+                        body: body,
+                        icon: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 512 512%22%3E%3Crect width%3D%22512%22 height%3D%22512%22 rx%3D%22100%22 fill%3D%22%236366f1%22%2F%3E%3Cg transform%3D%22translate(102.4, 102.4) scale(0.6)%22%3E%3Cpath d%3D%22M256 120a110 110 0 0 0-110 110c0 100-30 130-30 130h280s-30-30-30-130a110 110 0 0 0-110-110z%22 fill%3D%22white%22%2F%3E%3Cpath d%3D%22M220 380a40 40 0 0 0 72 0%22 fill%3D%22white%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E',
+                        badge: 'data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 512 512%22%3E%3Crect width%3D%22512%22 height%3D%22512%22 rx%3D%22100%22 fill%3D%22%236366f1%22%2F%3E%3Cg transform%3D%22translate(102.4, 102.4) scale(0.6)%22%3E%3Cpath d%3D%22M256 120a110 110 0 0 0-110 110c0 100-30 130-30 130h280s-30-30-30-130a110 110 0 0 0-110-110z%22 fill%3D%22white%22%2F%3E%3Cpath d%3D%22M220 380a40 40 0 0 0 72 0%22 fill%3D%22white%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E',
+                        vibrate: [200, 100, 200],
+                        tag: 'work-reminder'
+                    });
+                });
+            }
+        }
+
+        async function startVoiceInput() {
+            if (!('webkitSpeechRecognition' in window)) {
+                showToast('❌', 'VOZ NO SOPORTADA');
+                return;
+            }
+
+            // Reset form for fresh entry
+            document.getElementById('taskForm').reset();
+            document.getElementById('editingTaskId').value = "";
+
+            const micIcon = document.getElementById('micIcon');
+            const micText = document.getElementById('micText');
+
+            if (document.getElementById('formContainer').classList.contains('hidden')) toggleForm();
+            showToast('🎙️', 'ASISTENTE DE VOZ');
+
+            const steps = [
+                { id: 'taskTitle', prompt: '¿CUÁL ES EL NOMBRE DE LA TAREA?' },
+                { id: 'taskDescription', prompt: '¿ALGUNA NOTA O DETALLE?' },
+                { id: 'taskDate', prompt: '¿PARA CUÁNDO? DI HOY O MAÑANA.' },
+                { id: 'taskTime', prompt: '¿A QUÉ HORA?' }
+            ];
+
+            const getResponseStep = (promptText) => {
+                return new Promise(async (resolve) => {
+                    // First speak, then listen
+                    await speakTextPromise(promptText, 1.0);
+
+                    const recognition = new webkitSpeechRecognition();
+                    recognition.lang = 'es-ES';
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+
+                    recognition.onstart = () => {
+                        micIcon.classList.add('text-red-500', 'animate-pulse');
+                        micText.innerText = 'ESCUCHANDO...';
+                    };
+
+                    recognition.onresult = (e) => {
+                        resolve(e.results[0][0].transcript);
+                    };
+
+                    recognition.onerror = () => resolve(null);
+                    recognition.onend = () => {
+                        micIcon.classList.remove('text-red-500', 'animate-pulse');
+                        micText.innerText = 'DICTAR POR VOZ';
+                    };
+
+                    recognition.start();
+                });
+            };
+
+            for (const step of steps) {
+                let transcript = null;
+                let retries = 0;
+                const maxRetries = 2;
+
+                while (!transcript && retries <= maxRetries) {
+                    const prompt = retries === 0 ? step.prompt : "NO TE ESCUCHÉ, POR FAVOR VUELVE A REPETIR.";
+                    transcript = await getResponseStep(prompt);
+
+                    if (!transcript) {
+                        retries++;
+                        if (retries > maxRetries) {
+                            await speakTextPromise("LO SIENTO, NO PUDE ESCUCHARTE. CANCELANDO DICTADO.", 1.0);
+                            return;
+                        }
+                    }
+                }
+
+                if (transcript) {
+                    const el = document.getElementById(step.id);
+                    const val = transcript.trim();
+
+                    if (step.id === 'taskDate') {
+                        el.value = parseNaturalDate(val);
+                    } else if (step.id === 'taskTime') {
+                        el.value = parseNaturalTime(val);
+                    } else {
+                        el.value = val.toUpperCase();
+                    }
+                    showToast('✅', val.toUpperCase());
+                    vibrate();
+                }
+            }
+
+            // Finished all steps
+            setTimeout(() => {
+                addTask(new Event('submit'));
+                showToast('🚀', 'TAREA GUARDADA');
+            }, 500);
+        }
+
+        // --- Utils ---
+        function formatDate(d) {
+            if (!d) return '';
+            const parts = d.split('-');
+            const date = new Date(parts[0], parts[1] - 1, parts[2]);
+            return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' }).toUpperCase();
+        }
+
+        function showToast(icon, message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-icon').innerText = icon;
+            document.getElementById('toast-message').innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 4000);
+        }
+
+        function hardResetApp() {
+                showCustomConfirm('🔄', '¿ACTUALIZAR LA APLICACIÓN A LA ÚLTIMA VERSIÓN? (NO BORRARÁ TUS TAREAS)', () => {
+                    // Desregistrar Service Workers
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                            for (let registration of registrations) {
+                                registration.unregister();
+                            }
+                        });
+                    }
+                    // Borrar caches
+                    if ('caches' in window) {
+                        caches.keys().then(function(names) {
+                            for (let name of names) {
+                                caches.delete(name);
+                            }
+                        });
+                    }
+                    
+                    showToast('🔄', 'ACTUALIZANDO...');
+                    
+                    // Recargar página ignorando caché del navegador
+                    setTimeout(() => {
+                        window.location.reload(true);
+                    }, 800);
+                });
+        }
+
+        function toggleForm(isBackAction = false) {
+            const container = document.getElementById('formContainer');
+            const fabIcon = document.getElementById('fabIcon');
+            const fab = document.getElementById('fab');
+
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                fab.classList.replace('bg-indigo-600', 'bg-gray-800');
+                fabIcon.setAttribute('data-lucide', 'x');
+                // Push state when opening form
+                history.pushState({ formOpen: true }, '');
+            } else {
+                container.classList.add('hidden');
+                fab.classList.replace('bg-gray-800', 'bg-indigo-600');
+                fabIcon.setAttribute('data-lucide', 'plus');
+                // If closing manually (not via back button), remove the state
+                if (!isBackAction && history.state && history.state.formOpen) {
+                    history.back();
+                }
+            }
+            lucide.createIcons();
+            if (window.innerWidth < 1024 && !container.classList.contains('hidden')) {
+                window.scrollTo({ top: container.offsetTop - 20, behavior: 'smooth' });
+            }
+        }
+
+        // Handle physical back button
+        window.addEventListener('popstate', (event) => {
+            const container = document.getElementById('formContainer');
+            if (container && !container.classList.contains('hidden')) {
+                // If form is open, close it without affecting history further
+                toggleForm(true);
+            } else {
+                // Buffer to prevent accidental exit on main screen
+                history.pushState({ main: true }, '');
+            }
+        });
+
+        function populateTimeOptions() {
+            const datalist = document.getElementById('time-options');
+            if (!datalist) return;
+            let html = '';
+            for (let h = 0; h < 24; h++) {
+                for (let m = 0; m < 60; m += 30) {
+                    const hh = h.toString().padStart(2, '0');
+                    const mm = m.toString().padStart(2, '0');
+                    html += `<option value="${hh}:${mm}" label="${hh}:${mm}">`;
+                }
+            }
+            datalist.innerHTML = html;
+        }
+
+
+
+        function showCustomConfirm(icon, text, onConfirm) {
+            const overlay = document.getElementById('modal-overlay');
+            const content = document.getElementById('modal-content');
+            document.getElementById('modal-icon').innerText = icon;
+            document.getElementById('modal-text').innerText = text;
+            
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            
+            setTimeout(() => {
+                content.classList.remove('scale-90', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+
+            const close = () => {
+                content.classList.remove('scale-100', 'opacity-100');
+                content.classList.add('scale-90', 'opacity-0');
+                setTimeout(() => {
+                    overlay.classList.remove('flex');
+                    overlay.classList.add('hidden');
+                }, 300);
+            };
+
+            document.getElementById('modal-cancel-btn').onclick = close;
+            document.getElementById('modal-confirm-btn').onclick = () => {
+                close();
+                onConfirm();
+            };
+        }
+
+        // --- Init ---
+        populateTimeOptions();
+        document.getElementById('taskForm').onsubmit = addTask;
+        setInterval(automaticReminders, 60000); // Check every minute
+
+        // Initialize apps
+        window.addEventListener('load', () => {
+            renderTasks();
+            cleanOldTasks();
+            populateTimeOptions();
+            lucide.createIcons();
+
+            // Register SW for PWA & Notifications with Update Detection
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+                    .then(reg => {
+                        console.log('SW Registered');
+                        
+                        // Check for updates
+                        reg.onupdatefound = () => {
+                            const newWorker = reg.installing;
+                            newWorker.onstatechange = () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    showUpdatePrompt();
+                                }
+                            };
+                        };
+                        
+                        reg.update();
+                    })
+                    .catch(err => console.log('SW Error', err));
+
+                // If SW is waiting, reload on controller change
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!refreshing) {
+                        window.location.reload();
+                        refreshing = true;
+                    }
+                });
+
+                function showUpdatePrompt() {
+                    showCustomConfirm('🚀', 'NUEVA VERSIÓN DISPONIBLE (v1.0.8). ¿DESEAS ACTUALIZAR AHORA?', () => {
+                        hardResetApp();
+                    });
+                }
+
+                requestNotificationPermission();
+                history.replaceState({ main: true }, '');
+                history.pushState({ main: true }, '');
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "Gestor de Trabajo",
+  "short_name": "Gestor",
+  "version": "1.0.8",
+  "description": "Gestor de tareas ultra-rápido y eficiente",
+  "id": "/TRABAJO/",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
